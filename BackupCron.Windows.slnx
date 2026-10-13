@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BackupCron.Core/BackupCron.Core.csproj" />
+    <Project Path="src/BackupCron.Windows/BackupCron.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BackupCron.Tests/BackupCron.Tests.csproj" />
+  </Folder>
+</Solution>

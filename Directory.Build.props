@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>1.0.0</Version>
+    <Authors>BackupCron contributors</Authors>
+    <RepositoryUrl>https://github.com/backupcron/backupcron-windows</RepositoryUrl>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

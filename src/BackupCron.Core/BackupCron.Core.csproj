@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <EmbeddedResource Include="../../resources/localizations.json" Link="localizations.json" />
+  </ItemGroup>
+</Project>
