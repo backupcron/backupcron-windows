@@ -18,7 +18,12 @@ public static class BackupPaths
         }
         return Path.TrimEndingDirectorySeparator(current);
     }
-    public static bool Inside(string child, string parent) => child.Equals(parent, Comparison) || child.StartsWith(Path.TrimEndingDirectorySeparator(parent) + Path.DirectorySeparatorChar, Comparison);
+    public static bool Inside(string child, string parent)
+    {
+        parent = Path.TrimEndingDirectorySeparator(parent);
+        var prefix = parent.EndsWith(Path.DirectorySeparatorChar) ? parent : parent + Path.DirectorySeparatorChar;
+        return child.Equals(parent, Comparison) || child.StartsWith(prefix, Comparison);
+    }
     public static bool Exists(string path)
     {
         try { _ = File.GetAttributes(path); return true; } catch (FileNotFoundException) { return false; } catch (DirectoryNotFoundException) { return false; }
@@ -56,16 +61,14 @@ internal sealed record FileDigest(string Relative, string Hash, string? LinkTarg
 
 internal static class BackupFiles
 {
-    public static async Task<(string Path, string Extension, long Size)> StageAsync(BackupJob job, string work, IProgress<BackupProgress>? progress, Action<string>? log, CancellationToken ct)
+    public static async Task<(string Path, string Extension, long Size)> StageAsync(BackupJob job, string work, StorageMonitor storage, IProgress<BackupProgress>? progress, Action<string>? log, CancellationToken ct)
     {
         var source = BackupPaths.Resolve(job.SourcePath); var isDirectory = Directory.Exists(source);
         var rootName = Path.GetFileName(Path.TrimEndingDirectorySeparator(source)); if (rootName.Length == 0) rootName = "files";
-        var exclusions = job.Kind == BackupKind.Project ? job.ExclusionNames.ToHashSet(StringComparer.OrdinalIgnoreCase) : [];
-        var entries = new List<FileEntry>();
-        if (isDirectory) Walk(new DirectoryInfo(source), rootName, exclusions, entries, ct);
-        else entries.Add(new(rootName, source, new FileInfo(source).Length, null, false));
+        var entries = Entries(job, ct);
         long total = 0; foreach (var entry in entries) total = checked(total + entry.Size);
-        BackupPaths.RequireSpace(job.DestinationPath, checked(total + total / 100 + 65536));
+        var estimate = Measure(job, entries); storage.Observe(job, estimate);
+        await storage.RequireAsync(job.DestinationPath, estimate.PeakBytes, log, ct);
         var output = Path.Combine(work, job.ArchiveOutput ? "output.zip" : "payload");
         var digests = new List<FileDigest>(); long copied = 0;
         if (job.ArchiveOutput)
@@ -125,6 +128,23 @@ internal static class BackupFiles
             else { using var stream = File.OpenRead(path); if (Convert.ToHexString(await SHA256.HashDataAsync(stream, ct)) != digest.Hash) throw new InvalidDataException("Folder content verification failed."); }
         }
         return (output, "", total);
+    }
+    public static BackupSpaceEstimate Measure(BackupJob job, CancellationToken ct) => Measure(job, Entries(job, ct));
+    private static BackupSpaceEstimate Measure(BackupJob job, List<FileEntry> entries)
+    {
+        long size = 0; foreach (var entry in entries) size = checked(size + entry.Size + (entry.LinkTarget == null ? 0 : Encoding.UTF8.GetByteCount(entry.LinkTarget)));
+        var overhead = checked(65536L + entries.Count * (job.ArchiveOutput ? 2048L : 65536L));
+        // Compression is never assumed to save space. Include ZIP headers and directory allocation.
+        var peak = checked(size + size / 100 + overhead);
+        return new(job.SpaceIdentity(), peak, peak, DateTimeOffset.Now);
+    }
+    private static List<FileEntry> Entries(BackupJob job, CancellationToken ct)
+    {
+        var source = BackupPaths.Resolve(job.SourcePath); var rootName = Path.GetFileName(Path.TrimEndingDirectorySeparator(source)); if (rootName.Length == 0) rootName = "files";
+        var exclusions = job.Kind == BackupKind.Project ? job.ExclusionNames.ToHashSet(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(); var entries = new List<FileEntry>();
+        if (Directory.Exists(source)) Walk(new DirectoryInfo(source), rootName, exclusions, entries, ct);
+        else entries.Add(new(rootName, source, new FileInfo(source).Length, null, false));
+        return entries;
     }
     private static void Walk(DirectoryInfo directory, string relative, HashSet<string> exclusions, List<FileEntry> entries, CancellationToken ct)
     {

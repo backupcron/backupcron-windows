@@ -9,6 +9,8 @@
 | PostgreSQL/MySQL | Native dumps, connection checks, table sizes and whole-table exclusions; actual fixture dumps restored in CI. |
 | Connection modes | Direct executable discovery/custom path; Docker exec; SSH with key authentication and strict host verification. |
 | Schedules | Manual, 5–1440 minute intervals, hourly, daily and weekly; no repeated daily run during a DST overlap. |
+| Storage | Local/native volume identity; UNC/mapped shares; quota-aware free bytes; bounded asynchronous checks; next-output and peak working-space estimates; low-space/unavailable warnings. |
+| Shared volumes | One backup at a time per resolved volume, with a fresh capacity check before writing. Old copies remain until the replacement succeeds. |
 | Retention | Prune only successful outputs belonging to the same job and current destination, after publication and persisted history. |
 | Credentials | Windows DPAPI replaces macOS Keychain; credentials are absent from state.json and command arguments. |
 | Feedback | History, live progress/logs, notification-area notifications, optional bounded-volume tones. |

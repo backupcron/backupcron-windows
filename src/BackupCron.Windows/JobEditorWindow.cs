@@ -33,6 +33,9 @@ internal sealed class JobEditorWindow : Window
     private readonly PasswordBox password = new() { Padding = new Thickness(7), MinHeight = 32 };
     private readonly ComboBox kind, mode, schedule, weekday;
     private readonly CheckBox ssl, archive, git, enabled;
+    private readonly TextBlock storageSummary = Ui.Text("", 12);
+    private readonly System.Windows.Threading.DispatcherTimer storageDebounce = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private int storageRevision;
     private readonly TextBlock catalogSummary = Ui.Text("");
     private readonly TextBlock selectionError = Ui.Text("");
     private readonly DataGrid tableGrid = new() { AutoGenerateColumns = false, CanUserAddRows = false, MinHeight = 200, MaxHeight = 380 };
@@ -70,7 +73,7 @@ internal sealed class JobEditorWindow : Window
         Ui.Label(ssh, "editor.ssh_server", sshHost); Ui.Label(ssh, "editor.ssh_port", sshPort); Ui.Label(ssh, "editor.ssh_user", sshUser); Ui.Label(ssh, "editor.ssh_key", sshKey); ssh.Children.Add(Ui.Button("picker.choose_key", () => { var value = WindowsFiles.PickFile(this); if (value != null) sshKey.Text = value; })); ssh.Children.Add(Ui.Text(L10n.Text("editor.ssh_auth_hint"), 12)); serverSource.Children.Add(ssh);
         serverSource.Children.Add(Ui.Button("editor.test_connection", async () => await TestConnection())); input.Children.Add(serverSource);
         exclusions = Ui.Input(draft.ProjectExclusions); Ui.Label(project, "editor.project_exclusions", exclusions); git = Ui.Check("editor.include_git", draft.IncludesGitMetadata); project.Children.Add(git); input.Children.Add(project);
-        var output = PanelTab(tabs, "ux.destination_title"); destination = Ui.Input(draft.DestinationPath); Ui.Label(output, "editor.destination", destination); output.Children.Add(Ui.Button("editor.choose_folder", () => { var value = WindowsFiles.PickFolder(this); if (value != null) destination.Text = value; })); archive = Ui.Check("editor.create_archive", draft.ArchiveOutput); output.Children.Add(archive); output.Children.Add(Ui.Text(L10n.Text("editor.create_archive_hint"), 12)); mask = Ui.Input(draft.NameMask); Ui.Label(output, "editor.output_name_mask", mask); output.Children.Add(Ui.Text("{job} · {type} · {date} · {time}", 12)); retention = Ui.Input(draft.RetentionCount.ToString()); Ui.Label(output, "editor.retention", retention); output.Children.Add(Ui.Text(L10n.Text("editor.retention_hint"), 12));
+        var output = PanelTab(tabs, "ux.destination_title"); destination = Ui.Input(draft.DestinationPath); Ui.Label(output, "editor.destination", destination); output.Children.Add(Ui.Button("editor.choose_folder", () => { var value = WindowsFiles.PickFolder(this); if (value != null) destination.Text = value; })); archive = Ui.Check("editor.create_archive", draft.ArchiveOutput); output.Children.Add(archive); output.Children.Add(Ui.Text(L10n.Text("editor.create_archive_hint"), 12)); mask = Ui.Input(draft.NameMask); Ui.Label(output, "editor.output_name_mask", mask); output.Children.Add(Ui.Text("{job} · {type} · {date} · {time}", 12)); retention = Ui.Input(draft.RetentionCount.ToString()); Ui.Label(output, "editor.retention", retention); output.Children.Add(Ui.Text(L10n.Text("editor.retention_hint"), 12)); output.Children.Add(Ui.Text(L10n.Text("storage.title"), 18)); output.Children.Add(storageSummary); output.Children.Add(Ui.Button("storage.refresh", async () => await PreviewStorageAsync()));
         var timing = PanelTab(tabs, "ux.schedule_title"); schedule = EnumCombo(Enum.GetValues<ScheduleKind>(), draft.Schedule, x => L10n.Text("schedule." + x.ToString().ToLowerInvariant())); Ui.Label(timing, "editor.repeat", schedule); interval = Ui.Input(draft.IntervalMinutes.ToString()); Ui.Label(timing, "schedule.interval", interval); time = Ui.Input(draft.ScheduledTime); Ui.Label(timing, "editor.time", time); weekday = new ComboBox { ItemsSource = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.DayNames, SelectedIndex = Math.Clamp(draft.Weekday - 1, 0, 6), Padding = new Thickness(7) }; Ui.Label(timing, "editor.weekday", weekday); enabled = Ui.Check("editor.job_active", draft.IsEnabled); timing.Children.Add(enabled); timing.Children.Add(Ui.Text(L10n.Text("ux.schedule_open"), 12));
         var tablePanel = new StackPanel { Margin = new Thickness(12) }; tablesTab = new TabItem { Header = L10n.Text("database.tables_title"), Content = new ScrollViewer { Content = tablePanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }; tabs.Items.Add(tablesTab);
         tablePanel.Children.Add(Ui.Text(L10n.Text("database.exclusion_note"), 12)); tablePanel.Children.Add(Ui.Button("database.load", async () => await Inspect())); tablePanel.Children.Add(catalogSummary);
@@ -80,9 +83,10 @@ internal sealed class JobEditorWindow : Window
         tableGrid.ItemsSource = choices; tablePanel.Children.Add(tableGrid); tablePanel.Children.Add(Ui.Row(Ui.Button("database.include_all", () => SetAll(true)), Ui.Button("windows.exclude_all", () => SetAll(false)))); tablePanel.Children.Add(selectionError);
         foreach (var field in new[] { source, host, port, database, user, client, container, sshHost, sshPort, sshUser, sshKey }) field.TextChanged += (_, _) => ContextChanged();
         kind.SelectionChanged += (_, _) => { if (initializing) return; if (newJob) port.Text = Selected<BackupKind>(kind) == BackupKind.Mysql ? "3306" : "5432"; ContextChanged(); UpdateVisibility(); }; mode.SelectionChanged += (_, _) => { ContextChanged(); UpdateVisibility(); }; ssl.Checked += (_, _) => ContextChanged(); ssl.Unchecked += (_, _) => ContextChanged(); password.PasswordChanged += (_, _) => { passwordEdited = true; UpdateSummary(); };
-        git.Checked += (_, _) => SyncGit(true); git.Unchecked += (_, _) => SyncGit(false); exclusions.TextChanged += (_, _) => { if (initializing) return; var check = draft.Clone(); check.ProjectExclusions = exclusions.Text; git.IsChecked = check.IncludesGitMetadata; };
+        git.Checked += (_, _) => SyncGit(true); git.Unchecked += (_, _) => SyncGit(false); exclusions.TextChanged += (_, _) => { if (initializing) return; var check = draft.Clone(); check.ProjectExclusions = exclusions.Text; git.IsChecked = check.IncludesGitMetadata; UpdateSummary(); };
         destination.TextChanged += (_, _) => UpdateSummary(); archive.Checked += (_, _) => UpdateSummary(); archive.Unchecked += (_, _) => UpdateSummary();
-        initializing = false; UpdateVisibility(); UpdateSummary(); Closed += (_, _) => { lifetime.Cancel(); lifetime.Dispose(); };
+        storageDebounce.Tick += async (_, _) => { storageDebounce.Stop(); await PreviewStorageAsync(); };
+        initializing = false; UpdateVisibility(); UpdateSummary(); Closed += (_, _) => { storageDebounce.Stop(); lifetime.Cancel(); lifetime.Dispose(); };
     }
     private static StackPanel PanelTab(TabControl tabs, string key)
     { var panel = new StackPanel { Margin = new Thickness(12) }; tabs.Items.Add(new TabItem { Header = L10n.Text(key), Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }); return panel; }
@@ -138,13 +142,28 @@ internal sealed class JobEditorWindow : Window
         var error = catalog?.SelectionError(draft.ExcludedDatabaseTables); selectionError.Text = error ?? (catalog == null && draft.ExcludedDatabaseTables.Count > 0 ? L10n.Text("database.offline_edit") : "");
         if (catalog != null)
         {
-            var peak = BackupEngine.EstimateSpace(draft, catalog);
             synchronizingTables = true;
             try { var effective = catalog.EffectiveExclusions(draft.ExcludedDatabaseTables); foreach (var choice in choices) choice.ParentExcluded = choice.Table.ParentTables.Any(effective.Contains); }
             finally { synchronizingTables = false; }
             catalogSummary.Text = $"{L10n.Text("database.total_size")}: {L10n.Size(catalog.SizeBytes)}  ·  {L10n.Text("database.selected_size")}: {L10n.Size(catalog.SelectedSize(draft.ExcludedDatabaseTables))}";
-            if (!string.IsNullOrWhiteSpace(destination.Text)) catalogSummary.Text += "\n" + L10n.Text("database.space_summary", L10n.Text("database.space_destination"), L10n.Size(peak), L10n.Size(BackupPaths.AvailableBytes(destination.Text)));
+            if (inspectedIdentity == draft.ConnectionIdentity()) draft.LastSpaceEstimate = BackupEngine.EstimateDatabase(draft, catalog);
         }
+        storageRevision++; storageDebounce.Stop(); storageDebounce.Start();
+    }
+    private async Task PreviewStorageAsync()
+    {
+        var revision = storageRevision;
+        try
+        {
+            var job = Gather(); storageSummary.Text = L10n.Text("storage.checking");
+            var readingTask = store.Storage.ReadAsync(job.DestinationPath, lifetime.Token);
+            var estimateTask = store.Storage.EstimateAsync(job, lifetime.Token);
+            await Task.WhenAll(readingTask, estimateTask);
+            if (lifetime.IsCancellationRequested || revision != storageRevision) return;
+            var view = StorageMonitor.EvaluateJob(job, readingTask.Result, estimateTask.Result, store.Snapshot().Settings);
+            storageSummary.Text = MainWindow.SpaceText(view);
+        }
+        catch (OperationCanceledException) { } catch (Exception ex) { if (revision == storageRevision) storageSummary.Text = ex.Message; }
     }
     private void Save()
     {

@@ -50,6 +50,7 @@ public sealed class BackupJob
     public bool IsEnabled { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset? LastRunAt { get; set; }
+    public BackupSpaceEstimate? LastSpaceEstimate { get; set; }
     [JsonIgnore] public bool HasDatabaseSource => Kind is BackupKind.Sqlite or BackupKind.Postgres or BackupKind.Mysql;
     [JsonIgnore] public string[] ExclusionNames => ProjectExclusions.Split([',', ';', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
     [JsonIgnore] public bool IncludesGitMetadata
@@ -59,6 +60,7 @@ public sealed class BackupJob
     }
     public BackupJob Clone() => JsonSerializer.Deserialize<BackupJob>(JsonSerializer.Serialize(this, Json.Options), Json.Options)!;
     public string TargetIdentity() => Kind == BackupKind.Sqlite ? $"{Kind}|{SourcePath}" : JsonSerializer.Serialize(new object[] { Kind, ConnectionMode, Host, Port, DatabaseName, DockerContainer, SshHost, SshPort, SshUsername });
+    public string SpaceIdentity() => JsonSerializer.Serialize(new object[] { ConnectionIdentity(), SourcePath, ArchiveOutput, ProjectExclusions, ExcludedDatabaseTables.OrderBy(t => t.Schema, StringComparer.Ordinal).ThenBy(t => t.Name, StringComparer.Ordinal).ToArray() });
     public string ConnectionIdentity() => Kind == BackupKind.Sqlite ? TargetIdentity() : TargetIdentity() + JsonSerializer.Serialize(new object[] { Username, UseSsl, ClientExecutablePath, SshIdentityPath });
 }
 
@@ -118,6 +120,9 @@ public sealed record BackupProgress(double Fraction, string Message);
 public sealed class AppSettings
 {
     public bool SchedulerEnabled { get; set; } = true;
+    public bool StorageWarningsEnabled { get; set; } = true;
+    public double StorageWarningGiB { get; set; } = 20;
+    public double StorageWarningPercent { get; set; } = 10;
     public bool NotificationsEnabled { get; set; }
     public bool NotifySuccess { get; set; } = true;
     public bool NotifyFailure { get; set; } = true;

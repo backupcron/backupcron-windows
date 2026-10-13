@@ -47,6 +47,11 @@ internal sealed class WindowsFeedback : IDisposable
         if (shouldNotify && !foreground) tray.ShowBalloonTip(6000, run.JobName, run.Message[..Math.Min(220, run.Message.Length)], run.Status == RunStatus.Success ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Error);
         if (settings.SoundEnabled && (foreground || shouldNotify)) Play(run.Status == RunStatus.Success, settings.SoundVolume);
     }
+    public void NotifyStorage(StorageAlert alert, AppSettings settings)
+    {
+        if (!settings.StorageWarningsEnabled) return;
+        tray.ShowBalloonTip(10000, L10n.Text("storage.title"), alert.Message[..Math.Min(240, alert.Message.Length)], alert.Level == StorageLevel.Critical ? Forms.ToolTipIcon.Error : Forms.ToolTipIcon.Warning);
+    }
     public static void Play(bool success, double volume)
     {
         volume = double.IsFinite(volume) ? Math.Clamp(volume, 0, 1) : .35;

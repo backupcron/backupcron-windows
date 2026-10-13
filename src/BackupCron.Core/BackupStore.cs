@@ -31,19 +31,21 @@ public sealed class BackupStore
     private PersistedState state;
     private readonly string path;
     private readonly ISecretStore secrets;
-    private readonly BackupEngine engine = new();
+    private readonly BackupEngine engine;
+    public StorageMonitor Storage { get; }
     public ConcurrentDictionary<Guid, RunningBackup> Running { get; } = new();
     public string? Error { get; private set; }
     public bool ReadOnly { get; }
     public event Action<BackupRun>? Finished;
-    public BackupStore(string directory, ISecretStore secrets)
+    public BackupStore(string directory, ISecretStore secrets, IStorageProbe? storageProbe = null)
     {
-        this.secrets = secrets; Directory.CreateDirectory(directory); path = Path.Combine(directory, "state.json");
+        this.secrets = secrets; Storage = new(storageProbe, directory); engine = new(Storage); Directory.CreateDirectory(directory); path = Path.Combine(directory, "state.json");
         if (File.Exists(path))
         {
             try
             {
                 state = JsonSerializer.Deserialize<PersistedState>(File.ReadAllText(path), Json.Options) ?? throw new InvalidDataException("State is empty.");
+                ValidateStorageSettings(state.Settings);
                 if (state.Version > 1 || state.Jobs == null || state.History == null || state.Settings == null || state.Jobs.Select(j => j.Id).Distinct().Count() != state.Jobs.Count) throw new InvalidDataException("Unsupported or malformed application state.");
             }
             catch (Exception ex) { state = new(); ReadOnly = true; Error = L10n.Text("store.state_save_failed", ex.Message); }
@@ -68,7 +70,7 @@ public sealed class BackupStore
         }
     }
     public void SaveSettings(AppSettings settings)
-    { lock (sync) { EnsureWritable(); settings.SoundVolume = double.IsFinite(settings.SoundVolume) ? Math.Clamp(settings.SoundVolume, 0, 1) : .35; Persist(state.Jobs, state.History, settings); state.Settings = settings; L10n.Language = settings.Language; } }
+    { lock (sync) { EnsureWritable(); ValidateStorageSettings(settings); settings.SoundVolume = double.IsFinite(settings.SoundVolume) ? Math.Clamp(settings.SoundVolume, 0, 1) : .35; Persist(state.Jobs, state.History, settings); state.Settings = settings; L10n.Language = settings.Language; } }
     public void Delete(Guid id)
     {
         lock (sync)
@@ -110,7 +112,7 @@ public sealed class BackupStore
         {
             try
             {
-                var jobs = state.Jobs.Select(j => j.Clone()).ToList(); var current = jobs.FirstOrDefault(j => j.Id == job.Id); if (current != null) current.LastRunAt = run.FinishedAt;
+                var jobs = state.Jobs.Select(j => j.Clone()).ToList(); var current = jobs.FirstOrDefault(j => j.Id == job.Id); if (current != null) { current.LastRunAt = run.FinishedAt; var estimate = Storage.Remembered(job); if (estimate?.Matches(current) == true) current.LastSpaceEstimate = estimate; }
                 var history = state.History.Prepend(run).Take(10000).ToList(); Persist(jobs, history, state.Settings); state.Jobs = jobs; state.History = history;
                 if (status == RunStatus.Success) Prune(job, history, jobs);
             }
@@ -135,6 +137,10 @@ public sealed class BackupStore
             if (info.LinkTarget != null) continue;
             BackupPaths.DeleteOwnWork(old);
         }
+    }
+    private static void ValidateStorageSettings(AppSettings settings)
+    {
+        if (!double.IsFinite(settings.StorageWarningGiB) || settings.StorageWarningGiB < 0 || settings.StorageWarningGiB > 1000000 || !double.IsFinite(settings.StorageWarningPercent) || settings.StorageWarningPercent < 0 || settings.StorageWarningPercent > 100) throw new ArgumentException(L10n.Text("storage.invalid_threshold"));
     }
     private void EnsureWritable() { if (ReadOnly) throw new IOException(Error); }
     private void Persist(List<BackupJob> jobs, List<BackupRun> history, AppSettings settings)

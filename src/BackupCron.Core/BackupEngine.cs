@@ -7,6 +7,8 @@ namespace BackupCron.Core;
 public sealed class BackupEngine
 {
     private readonly ProcessRunner runner = new();
+    private readonly StorageMonitor storage;
+    public BackupEngine(StorageMonitor? storage = null) => this.storage = storage ?? new StorageMonitor();
     public async Task<DatabaseCatalog> InspectDatabaseAsync(BackupJob job, string password, CancellationToken ct = default)
     {
         ValidateDatabase(job); using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct); timeout.CancelAfter(TimeSpan.FromSeconds(30));
@@ -40,13 +42,16 @@ public sealed class BackupEngine
     public Task<BackupResult> RunAsync(BackupJob job, string password = "", IProgress<BackupProgress>? progress = null, Action<string>? log = null, CancellationToken ct = default)
         => Task.Run(async () =>
         {
-            Validate(job); ct.ThrowIfCancellationRequested(); Directory.CreateDirectory(job.DestinationPath);
+            Validate(job); ct.ThrowIfCancellationRequested();
+            progress?.Report(new(.01, L10n.Text("storage.waiting")));
+            using var lease = await storage.AcquireAsync(job.DestinationPath, ct);
+            Directory.CreateDirectory(job.DestinationPath);
             var work = Path.Combine(job.DestinationPath, ".BackupCron-work-" + Guid.NewGuid()); Directory.CreateDirectory(work);
             try
             {
                 string staged; string extension; long size;
                 progress?.Report(new(.02, L10n.Text("job.running")));
-                if (!job.HasDatabaseSource) (staged, extension, size) = await BackupFiles.StageAsync(job, work, progress, log, ct);
+                if (!job.HasDatabaseSource) (staged, extension, size) = await BackupFiles.StageAsync(job, work, storage, progress, log, ct);
                 else
                 {
                     DatabaseCatalog? catalog = null;
@@ -56,9 +61,11 @@ public sealed class BackupEngine
                     if (catalog != null)
                     {
                         if (catalog.SelectionError(job.ExcludedDatabaseTables) is { } error) throw new InvalidDataException(error);
-                        BackupPaths.RequireSpace(job.DestinationPath, EstimateSpace(job, catalog));
+                        var estimate = EstimateDatabase(job, catalog); storage.Observe(job, estimate);
+                        await storage.RequireAsync(job.DestinationPath, estimate.PeakBytes, log, ct);
                         job = job.Clone(); job.ExcludedDatabaseTables = catalog.EffectiveExclusions(job.ExcludedDatabaseTables).ToList();
                     }
+                    if (catalog == null) await storage.RequireAsync(job.DestinationPath, null, log, ct);
                     extension = job.Kind == BackupKind.Sqlite ? "sqlite3" : "sql"; staged = Path.Combine(work, "snapshot." + extension);
                     if (job.Kind == BackupKind.Sqlite) await SqliteBackup.CreateAsync(job, staged, progress, log, ct);
                     else
@@ -98,6 +105,17 @@ public sealed class BackupEngine
         var size = job.Kind == BackupKind.Sqlite ? catalog.SizeBytes : catalog.SelectedSize(job.ExcludedDatabaseTables);
         var factor = job.Kind == BackupKind.Sqlite ? job.ExcludedDatabaseTables.Count > 0 ? 4 : job.ArchiveOutput ? 3 : 2 : job.ArchiveOutput ? 5 : 2;
         try { return size is { } value ? checked(value * factor + 65536) : null; } catch (OverflowException) { return null; }
+    }
+    public static BackupSpaceEstimate EstimateDatabase(BackupJob job, DatabaseCatalog catalog)
+    {
+        long? output = null;
+        try
+        {
+            var size = job.Kind == BackupKind.Sqlite ? catalog.SizeBytes : catalog.SelectedSize(job.ExcludedDatabaseTables);
+            if (size is { } value) output = checked(value * (job.Kind == BackupKind.Sqlite ? 1 : 2) + (job.ArchiveOutput ? value / 100 + 65536 : 0));
+        }
+        catch (OverflowException) { }
+        return new(job.SpaceIdentity(), output, EstimateSpace(job, catalog), DateTimeOffset.Now);
     }
     public static void ValidateDatabase(BackupJob job)
     {
