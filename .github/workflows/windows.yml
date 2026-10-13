@@ -20,7 +20,7 @@ on:
         default: false
       version:
         description: Release version
-        default: '1.0.0'
+        default: '1.1.0'
         type: string
 permissions:
   contents: read
@@ -75,12 +75,12 @@ jobs:
       - name: Package self-contained installer
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+          RELEASE_VERSION: ${{ inputs.version || '1.1.0' }}
         run: ./scripts/build-windows.ps1 -Version $env:RELEASE_VERSION
       - name: Verify installation and installed application
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+          RELEASE_VERSION: ${{ inputs.version || '1.1.0' }}
         run: ./scripts/verify-installer.ps1 -Version $env:RELEASE_VERSION
       - uses: actions/upload-artifact@v7
         if: always()
@@ -110,7 +110,7 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
-          printf '%s\n' 'Free, open-source BackupCron for Windows.' '' 'Download the win-x64 setup.exe and run the installer. The .NET runtime is included; installation does not require administrator rights.' '' 'Files, folders, projects, ZIP, SQLite/PostgreSQL/MySQL, table sizes and exclusions, Docker/SSH, schedules, retention, history, protected passwords and ten interface languages.' '' 'Scheduling works while BackupCron is running, including in the notification area. The installer is currently unsigned by a publisher certificate.' '' 'CI verified backup scenarios on Windows, real PostgreSQL/MySQL dump restoration, installation, WPF startup, protected credentials and uninstallation.' > release-notes.md
+          printf '%s\n' 'Free, open-source BackupCron for Windows.' '' 'Download the win-x64 setup.exe and run the installer. The .NET runtime is included; installation does not require administrator rights.' '' 'New in 1.1: machine and destination capacity, available account quota, next-backup output and peak working space, configurable early warnings and serialized backups on shared volumes.' '' 'Files, folders, projects, ZIP, SQLite/PostgreSQL/MySQL, table sizes and exclusions, Docker/SSH, schedules, retention, history, protected passwords and ten interface languages.' '' 'Scheduling works while BackupCron is running, including in the notification area. The installer is currently unsigned by a publisher certificate.' '' 'CI verified backup scenarios on Windows, real PostgreSQL/MySQL dump restoration, installation, WPF startup, protected credentials, native local/SMB storage queries, next-backup budgets, upgrade from 1.0 and uninstallation.' > release-notes.md
           printf '\nBuilt from `%s`.\n\nSHA-256:\n```text\n' "$SOURCE_COMMIT" >> release-notes.md
           cat artifacts/SHA256SUMS.txt >> release-notes.md
           printf '\n```\n' >> release-notes.md
