@@ -1,0 +1,117 @@
+name: Windows build and release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'installer/**'
+      - 'scripts/**'
+      - 'resources/**'
+      - 'Directory.Build.props'
+      - 'BackupCron.Windows.slnx'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified installer to GitHub Releases
+        type: boolean
+        default: false
+      version:
+        description: Release version
+        default: '1.0.0'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  database-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: backupcron-fixture
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: backupcron-fixture
+          MYSQL_ROOT_HOST: '%'
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install database clients
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16 mysql-client
+      - name: Core scenarios and real dump restoration
+        run: dotnet run --project tests/BackupCron.Tests -c Release -- --server-tests
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build all projects
+        run: dotnet build BackupCron.Windows.slnx -c Release
+      - name: Backup scenarios on Windows
+        run: dotnet run --project tests/BackupCron.Tests -c Release --no-build
+      - name: Package self-contained installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+        run: ./scripts/build-windows.ps1 -Version $env:RELEASE_VERSION
+      - name: Verify installation and installed application
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+        run: ./scripts/verify-installer.ps1 -Version $env:RELEASE_VERSION
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: BackupCron-Windows
+          path: |
+            artifacts/*setup.exe
+            artifacts/SHA256SUMS.txt
+            artifacts/proof/*
+            artifacts/install.log
+          if-no-files-found: warn
+  release:
+    needs: [windows, database-integration]
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: BackupCron-Windows
+          path: artifacts
+      - name: Publish tested installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          printf '%s\n' 'Free, open-source BackupCron for Windows.' '' 'Download the win-x64 setup.exe and run the installer. The .NET runtime is included; installation does not require administrator rights.' '' 'Files, folders, projects, ZIP, SQLite/PostgreSQL/MySQL, table sizes and exclusions, Docker/SSH, schedules, retention, history, protected passwords and ten interface languages.' '' 'Scheduling works while BackupCron is running, including in the notification area. The installer is currently unsigned by a publisher certificate.' '' 'CI verified backup scenarios on Windows, real PostgreSQL/MySQL dump restoration, installation, WPF startup, protected credentials and uninstallation.' > release-notes.md
+          printf '\nBuilt from `%s`.\n\nSHA-256:\n```text\n' "$SOURCE_COMMIT" >> release-notes.md
+          cat artifacts/SHA256SUMS.txt >> release-notes.md
+          printf '\n```\n' >> release-notes.md
+          gh release create "v$RELEASE_VERSION" --repo "$GH_REPO" --target "$SOURCE_COMMIT" --title "BackupCron Windows $RELEASE_VERSION" --notes-file release-notes.md artifacts/*setup.exe artifacts/SHA256SUMS.txt artifacts/proof/BackupCron-Windows-preview.png
