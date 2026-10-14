@@ -32,8 +32,9 @@ internal static class UiSmokeTests
     private static async Task Render(Window window, string output, string name)
     {
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); window.UpdateLayout();
-        // Render application client content, excluding operating-system chrome and automation overlays.
-        var visual = (FrameworkElement)window.Content; var bitmap = new RenderTargetBitmap((int)Math.Ceiling(visual.ActualWidth), (int)Math.Ceiling(visual.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(visual);
+        // Rendering the Window includes its solid background and the content margins.
+        // Rendering only its child would discard the Window background and clip margins.
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(window);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var stream = File.Create(Path.Combine(output, name)); encoder.Save(stream);
     }
     private static void Dialog(Window dialog, Func<Task> test)
@@ -59,7 +60,7 @@ internal static class UiSmokeTests
         {
             await Render(editor, output, "editor-source.png");
             Find<TextBox>(editor, "editor-name").Text = "Project files updated"; editor.Tabs.SelectedIndex = 1;
-            var zip = Find<CheckBox>(editor, "editor-archive"); zip.IsChecked = false; await Render(editor, output, "editor-destination.png");
+            var zip = Find<CheckBox>(editor, "editor-archive"); zip.IsChecked = false; await Until(() => { var value = Find<TextBlock>(editor, "editor-storage-summary").Text; return value.Length > 0 && value != L10n.Text("storage.checking"); }); await Render(editor, output, "editor-destination.png");
             editor.Tabs.SelectedIndex = 2; Find<ComboBox>(editor, "editor-schedule").SelectedIndex = (int)ScheduleKind.Weekly; await Render(editor, output, "editor-schedule.png"); Click(editor, "editor-save");
         });
         var saved = store.Snapshot().Jobs.Single(j => j.Id == file.Id); Require(saved.Name == "Project files updated" && !saved.ArchiveOutput && saved.Schedule == ScheduleKind.Weekly && saved.RetentionCount == file.RetentionCount && saved.DestinationPath == file.DestinationPath && store.Password(file.Id) == "smoke-credential", "Editor save lost backup options or credentials.");
@@ -83,6 +84,25 @@ internal static class UiSmokeTests
         });
         var updated = store.Snapshot().Settings; Require(updated.StorageWarningGiB == 25 && updated.StorageWarningPercent == 15 && updated.SchedulerEnabled == prior.SchedulerEnabled && updated.Language == prior.Language && updated.NotificationsEnabled == prior.NotificationsEnabled, "Settings save lost preferences.");
         await store.Run(file.Id); Require(store.Snapshot().History[0].Status == RunStatus.Success && Directory.Exists(store.Snapshot().History[0].OutputPath), "Edited ordinary folder copy failed.");
+        var connectionEditor = new JobEditorWindow(store, null) { Owner = window };
+        Dialog(connectionEditor, async () =>
+        {
+            Find<ComboBox>(connectionEditor, "editor-kind").SelectedIndex = (int)BackupKind.Postgres;
+            Require(Find<TextBox>(connectionEditor, "editor-host").IsVisible && !Find<TextBox>(connectionEditor, "editor-source").IsVisible, "PostgreSQL source controls are missing.");
+            var mode = Find<ComboBox>(connectionEditor, "editor-connection"); mode.SelectedIndex = (int)ConnectionMode.Docker;
+            Require(Find<TextBox>(connectionEditor, "editor-container").IsVisible && !Find<TextBox>(connectionEditor, "editor-ssh-host").IsVisible, "Docker controls are missing.");
+            mode.SelectedIndex = (int)ConnectionMode.Ssh; Require(Find<TextBox>(connectionEditor, "editor-ssh-host").IsVisible && !Find<TextBox>(connectionEditor, "editor-container").IsVisible, "SSH controls are missing.");
+            Find<ComboBox>(connectionEditor, "editor-kind").SelectedIndex = (int)BackupKind.Mysql; Require(Find<TextBox>(connectionEditor, "editor-host").IsVisible, "MySQL source controls are missing.");
+            await Task.CompletedTask; connectionEditor.Close();
+        });
+        var project = new JobEditorWindow(store, null) { Owner = window };
+        Dialog(project, async () =>
+        {
+            Find<TextBox>(project, "editor-name").Text = "Website project"; Find<ComboBox>(project, "editor-kind").SelectedIndex = (int)BackupKind.Project; Find<TextBox>(project, "editor-source").Text = file.SourcePath;
+            Find<CheckBox>(project, "editor-git").IsChecked = false; Require(Find<TextBox>(project, "editor-project-exclusions").Text.Contains(".git"), "Git exclusion switch failed.");
+            project.Tabs.SelectedIndex = 1; Find<TextBox>(project, "editor-destination").Text = file.DestinationPath; await Task.CompletedTask; Click(project, "editor-save");
+        });
+        await store.Run(project.SavedJobId); Require(store.Snapshot().Jobs.Single(j => j.Id == project.SavedJobId).Kind == BackupKind.Project && store.Snapshot().History[0].Status == RunStatus.Success, "Project editor and backup failed.");
         var create = new JobEditorWindow(store, null) { Owner = window };
         Dialog(create, async () =>
         {
@@ -91,6 +111,6 @@ internal static class UiSmokeTests
         });
         await store.Run(create.SavedJobId); Require(store.Snapshot().History[0].Status == RunStatus.Success && File.Exists(store.Snapshot().History[0].OutputPath), "New single-file job failed.");
         window.Navigate("overview"); await window.RefreshStorageAsync();
-        File.WriteAllText(Path.Combine(output, "ui-result.txt"), "PASS: overview/detail/history navigation; search; pause/resume; backup from UI; logs; keyboard focus; compact window; file editor and schedule persistence; SQLite sizes/search/exclusions; settings persistence; edited folder backup; new single-file job and backup. Screenshots rendered from the installed WPF application.\n");
+        File.WriteAllText(Path.Combine(output, "ui-result.txt"), "PASS: overview/detail/history navigation; search; pause/resume; backup from UI; logs; keyboard focus; compact window; file editor and schedule persistence; SQLite sizes/search/exclusions; settings persistence; edited folder backup; new single-file and project jobs/backups; PostgreSQL/MySQL/Docker/SSH controls. Screenshots rendered from the installed WPF application.\n");
     }
 }

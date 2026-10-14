@@ -37,7 +37,7 @@ internal sealed class MainWindow : Window
         overview = Nav("common.overview", "home", () => Navigate("overview"), "nav-overview"); head.Children.Add(overview);
         history = Nav("common.history", "history", () => Navigate("history"), "nav-history"); head.Children.Add(history);
         var jobsLabel = Ui.Text(L10n.Text("common.jobs"), 11, true); jobsLabel.Margin = new Thickness(10, 24, 0, 8); head.Children.Add(jobsLabel);
-        search.ToolTip = L10n.Text("ui.search_jobs"); AutomationProperties.SetName(search, L10n.Text("ui.search_jobs")); search.Margin = new Thickness(4, 0, 4, 8); search.TextChanged += (_, _) => { sidebarStamp = ""; renderStamp = ""; Refresh(); }; head.Children.Add(search);
+        search.Tag = L10n.Text("ui.search_jobs"); search.ToolTip = L10n.Text("ui.search_jobs"); AutomationProperties.SetName(search, L10n.Text("ui.search_jobs")); search.Margin = new Thickness(4, 0, 4, 8); search.TextChanged += (_, _) => { sidebarStamp = ""; renderStamp = ""; Refresh(); }; head.Children.Add(search);
         var foot = new StackPanel(); DockPanel.SetDock(foot, Dock.Bottom); sidebar.Children.Add(foot);
         foot.Children.Add(Nav("common.new_job", "plus", NewJob, "nav-new-job")); foot.Children.Add(Nav("windows.settings", "settings", Settings, "nav-settings"));
         var note = Ui.Text(L10n.Text("ux.schedule_open"), 11, true); note.Margin = new Thickness(10, 14, 10, 0); foot.Children.Add(note);
@@ -56,7 +56,7 @@ internal sealed class MainWindow : Window
         Refresh(); if (!smokeTest) _ = RefreshStorageAsync();
     }
     private Button Nav(string key, string icon, Action action, string id)
-    { var b = Ui.Id(Ui.Button(key, action, icon: icon), id); b.HorizontalContentAlignment = HorizontalAlignment.Left; b.Background = Brushes.Transparent; b.Margin = new Thickness(0, 1, 0, 1); b.Padding = new Thickness(10, 8, 6, 8); return b; }
+    { var b = Ui.Id(Ui.Button(key, action, icon: icon), id); b.HorizontalAlignment = HorizontalAlignment.Stretch; b.HorizontalContentAlignment = HorizontalAlignment.Left; b.Background = Brushes.Transparent; b.Margin = new Thickness(0, 1, 0, 1); b.Padding = new Thickness(10, 8, 6, 8); return b; }
     private static void NavState(Button button, bool selected)
     {
         button.Background = Ui.Brush(selected ? "Accent" : "Sidebar"); button.Foreground = Ui.Brush(selected ? "AccentText" : "Ink");
@@ -89,7 +89,7 @@ internal sealed class MainWindow : Window
             {
                 var b = Ui.Id(Ui.Button("ux.open_job", () => Navigate("job", job.Id)), "job-" + job.Id);
                 var label = Ui.Text(job.Name); label.TextWrapping = TextWrapping.NoWrap; label.TextTrimming = TextTrimming.CharacterEllipsis; label.MaxWidth = 145;
-                b.Content = Ui.Row(Ui.Icon(Ui.KindIcon(job.Kind), 17), label); b.ToolTip = job.Name; AutomationProperties.SetName(b, job.Name); b.HorizontalContentAlignment = HorizontalAlignment.Left; b.Padding = new Thickness(10, 8, 6, 8); b.Margin = new Thickness(0, 1, 0, 1); b.Background = Ui.Brush(selectedId == job.Id ? "Raised" : "Sidebar"); sidebarJobs.Children.Add(b);
+                b.Content = Ui.Row(Ui.Icon(Ui.KindIcon(job.Kind), 17), label); b.ToolTip = job.Name; AutomationProperties.SetName(b, job.Name); b.HorizontalAlignment = HorizontalAlignment.Stretch; b.HorizontalContentAlignment = HorizontalAlignment.Left; b.Padding = new Thickness(10, 8, 6, 8); b.Margin = new Thickness(0, 1, 0, 1); b.Background = Ui.Brush(selectedId == job.Id ? "Raised" : "Sidebar"); sidebarJobs.Children.Add(b);
             }
         }
         var stamp = side + System.Text.Json.JsonSerializer.Serialize(new { snapshot.History, snapshot.Settings, store.Error, Storage = store.Storage.Current, storageRefreshing, historyFilter, logVisible, Running = store.Running.Select(r => new { r.Key, r.Value.Progress, Logs = r.Value.Logs.ToArray() }).ToArray() }, Json.Options);
@@ -99,9 +99,9 @@ internal sealed class MainWindow : Window
         scroll.UpdateLayout(); scroll.ScrollToVerticalOffset(offset);
     }
     private bool Matches(BackupJob job) => search.Text.Trim().Length == 0 || job.Name.Contains(search.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) || L10n.Kind(job.Kind).Contains(search.Text.Trim(), StringComparison.CurrentCultureIgnoreCase);
-    private void Header(string title, string? subtitle, params UIElement[] actions)
+    private void Header(string title, string? subtitle, UIElement[] actions, string? icon = null)
     {
-        var text = new StackPanel(); text.Children.Add(Ui.Heading(title, 26)); if (subtitle != null) { var sub = Ui.Text(subtitle, 13, true); sub.Margin = new Thickness(0, 7, 0, 0); text.Children.Add(sub); }
+        var text = new StackPanel(); text.Children.Add(icon == null ? Ui.Heading(title, 26) : Ui.Row(Ui.Icon(icon, 32), Ui.Heading(title, 26))); if (subtitle != null) { var sub = Ui.Text(subtitle, 13, true); sub.Margin = new Thickness(0, 7, 0, 0); text.Children.Add(sub); }
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 24) }; grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); grid.Children.Add(text); var row = Ui.Row(actions); row.Margin = new Thickness(20, 0, 0, 0); Grid.SetColumn(row, 1); grid.Children.Add(row); body.Children.Add(grid);
     }
     private static (string Label, string Icon, string Color, string Fill) Status(BackupRun? run, bool running = false) => running ? (L10n.Text("job.running"), "clock", "Accent", "Selection") : run?.Status switch
@@ -111,8 +111,7 @@ internal sealed class MainWindow : Window
     private static string Next(BackupJob job, AppSettings settings) => !settings.SchedulerEnabled ? L10n.Text("status.scheduler_paused") : !job.IsEnabled ? L10n.Text("job.paused") : Scheduling.NextRun(job, DateTimeOffset.Now) is { } date ? Ui.Date(date) : L10n.Text("status.no_automatic_runs");
     private void OverviewPage(PersistedState snapshot)
     {
-        Header(L10n.Text("dashboard.subtitle"), L10n.Text("ux.overview_hint"), Ui.Id(Ui.Button("common.new_job", NewJob, true, "plus"), "overview-new-job"));
-        StorageSection();
+        Header(L10n.Text("dashboard.subtitle"), L10n.Text("ux.overview_hint"), [Ui.Id(Ui.Button("common.new_job", NewJob, true, "plus"), "overview-new-job")]);
         var heading = Ui.Heading(L10n.Text("ux.backups")); heading.Margin = new Thickness(0, 22, 0, 12); body.Children.Add(heading);
         var list = new StackPanel(); foreach (var job in snapshot.Jobs.Where(Matches))
         {
@@ -120,11 +119,12 @@ internal sealed class MainWindow : Window
             var name = new StackPanel(); name.Children.Add(Ui.Heading(job.Name)); var state = StatusLine(last, store.Running.ContainsKey(job.Id)); state.Margin = new Thickness(0, 6, 0, 0); name.Children.Add(state);
             var row = new DockPanel(); var arrow = Ui.Icon("chevron", 14); DockPanel.SetDock(arrow, Dock.Right); row.Children.Add(arrow); var icon = Ui.Icon(Ui.KindIcon(job.Kind), 29); icon.Margin = new Thickness(0, 0, 12, 0); DockPanel.SetDock(icon, Dock.Left); row.Children.Add(icon); row.Children.Add(name);
             var item = new StackPanel(); item.Children.Add(row); var metrics = Ui.Columns(Ui.Metric(L10n.Text("ux.last_success"), Ui.Date(success?.FinishedAt)), Ui.Metric(L10n.Text("job.next_run"), Next(job, snapshot.Settings))); metrics.Margin = new Thickness(0, 14, 0, 0); item.Children.Add(metrics);
-            var button = Ui.Id(Ui.Button("ux.open_job", () => Navigate("job", job.Id)), "overview-job-" + job.Id); button.Content = item; button.Background = Ui.Brush("Panel"); button.HorizontalContentAlignment = HorizontalAlignment.Stretch; button.Padding = new Thickness(16); button.Margin = new Thickness(0); AutomationProperties.SetName(button, job.Name + " · " + Status(last).Label);
+            var button = Ui.Id(Ui.Button("ux.open_job", () => Navigate("job", job.Id)), "overview-job-" + job.Id); button.Content = item; button.Background = Ui.Brush("Panel"); button.HorizontalAlignment = HorizontalAlignment.Stretch; button.HorizontalContentAlignment = HorizontalAlignment.Stretch; button.Padding = new Thickness(16); button.Margin = new Thickness(0); AutomationProperties.SetName(button, job.Name + " · " + Status(last).Label);
             if (list.Children.Count > 0) list.Children.Add(new Border { Background = Ui.Brush("Line"), Height = 1, Margin = new Thickness(16, 0, 16, 0) }); list.Children.Add(button);
         }
         if (list.Children.Count == 0) list.Children.Add(Ui.Text(L10n.Text(snapshot.Jobs.Count == 0 ? "dashboard.create_first_job" : "ui.no_matches"), 13, true)); body.Children.Add(Ui.Card(list, padding: 0));
         var note = Ui.Row(Ui.Icon("clock", 14), Ui.Text(L10n.Text("ux.schedule_open"), 12, true)); note.Margin = new Thickness(0, 12, 0, 20); body.Children.Add(note);
+        StorageSection();
         if (snapshot.History.Count > 0) { body.Children.Add(Ui.Heading(L10n.Text("dashboard.recent_runs"))); foreach (var run in snapshot.History.Take(3)) body.Children.Add(RunRow(run)); }
     }
     private void StorageSection()
@@ -149,7 +149,7 @@ internal sealed class MainWindow : Window
         var running = store.Running.TryGetValue(job.Id, out var runningInfo); var run = snapshot.History.FirstOrDefault(r => r.JobId == job.Id); var success = snapshot.History.FirstOrDefault(r => r.JobId == job.Id && r.Status == RunStatus.Success); var status = Status(run, running);
         var edit = Ui.Id(Ui.Button("common.edit", EditSelected, icon: "edit"), "job-edit"); edit.IsEnabled = !running;
         var start = Ui.Id(Ui.Button(running ? "common.cancel" : "ux.create_backup", running ? CancelSelected : RunSelected, !running, running ? "close" : "plus"), running ? "job-cancel" : "job-run");
-        Header(job.Name, L10n.Kind(job.Kind), edit, start);
+        Header(job.Name, L10n.Kind(job.Kind), [edit, start], Ui.KindIcon(job.Kind));
         var result = new StackPanel(); var label = Ui.Heading(status.Label, 17); label.Foreground = Ui.Brush(status.Color); result.Children.Add(Ui.Row(Ui.Icon(status.Icon, 30, status.Color), label));
         var message = Ui.Text(running ? runningInfo!.Progress.Message : run == null ? L10n.Text("ux.first_backup_hint") : Ui.Date(run.FinishedAt) + (run.Status == RunStatus.Success ? " · " + L10n.Size(run.OutputSizeBytes) : "\n" + run.Message), 12, true); message.Margin = new Thickness(38, 9, 0, 14); result.Children.Add(message);
         var log = Ui.Id(Ui.Button(logVisible ? "ux.hide_log" : "ux.show_log", () => { logVisible = !logVisible; Refresh(); }, icon: "log"), "job-log");
@@ -180,7 +180,7 @@ internal sealed class MainWindow : Window
     { var logs = Ui.Input(string.Join(Environment.NewLine, run.Logs)); logs.IsReadOnly = true; logs.AcceptsReturn = true; logs.TextWrapping = TextWrapping.Wrap; logs.VerticalScrollBarVisibility = ScrollBarVisibility.Auto; logs.FontFamily = new FontFamily("Consolas"); logs.Margin = new Thickness(20); var window = new Window { Title = run.JobName + " · " + L10n.Text("ux.show_log"), Owner = this, Width = 780, Height = 480, Content = logs, WindowStartupLocation = WindowStartupLocation.CenterOwner }; Ui.Window(window); window.Show(); }
     private void HistoryPage(PersistedState snapshot)
     {
-        Header(L10n.Text("common.history"), L10n.Text("ui.history_hint"));
+        Header(L10n.Text("common.history"), L10n.Text("ui.history_hint"), []);
         var filter = Ui.Id(new ComboBox { ItemsSource = new[] { L10n.Text("history.all"), L10n.Text("history.successful"), L10n.Text("history.failed"), L10n.Text("ux.last_cancelled") }, SelectedIndex = historyFilter, Width = 230, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) }, "history-filter");
         filter.SelectionChanged += (_, _) => { historyFilter = filter.SelectedIndex; Refresh(); }; body.Children.Add(filter);
         var filtered = snapshot.History.Where(r => historyFilter switch { 1 => r.Status == RunStatus.Success, 2 => r.Status == RunStatus.Failure, 3 => r.Status == RunStatus.Cancelled, _ => true }).ToArray();

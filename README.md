@@ -53,7 +53,9 @@ example files and a SQLite database.
 Scheduling works while BackupCron is running. Closing its window keeps it in
 the notification area; use the tray menu to quit. Autostart is optional.
 
-SQLite support is included. Direct PostgreSQL/MySQL backups require their
+SQLite support is included. Its total database size is available; individual table
+sizes show an em dash when the bundled SQLite build has no `dbstat` module.
+ Direct PostgreSQL/MySQL backups require their
 clients; select `pg_dump.exe` or `mysqldump.exe` if automatic discovery fails.
 Docker connections require Docker. SSH requires OpenSSH, a configured key and
 a trusted host key; database credentials come from `.pgpass` or `.my.cnf` on

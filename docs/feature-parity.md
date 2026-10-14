@@ -43,3 +43,7 @@ Windows keeps its native window chrome, Explorer integration, pickers and DPAPI.
 Installed-app CI exercises navigation, search, run and pause actions, editing and
 settings persistence, SQLite table sizes/search/exclusions and keyboard focus,
 then renders the actual windows at regular and compact sizes.
+
+SQLite total database size is known. Per-table physical sizes require the optional
+SQLite `dbstat` module; an unavailable size is displayed as an em dash and is never
+replaced with zero. PostgreSQL/MySQL size inspection uses their native catalogs.

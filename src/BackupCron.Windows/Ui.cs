@@ -27,7 +27,7 @@ internal static class Ui
     public static T Id<T>(T element, string id) where T : DependencyObject { AutomationProperties.SetAutomationId(element, id); return element; }
     public static Button Button(string key, Action action, bool primary = false, string? icon = null)
     {
-        var button = new Button { Content = icon == null ? L10n.Text(key) : Row(Icon(icon, 16), Text(L10n.Text(key), 13)), Margin = new Thickness(0, 0, 8, 0) };
+        var button = new Button { HorizontalAlignment = HorizontalAlignment.Left, Content = icon == null ? L10n.Text(key) : Row(Icon(icon, 16), Text(L10n.Text(key), 13)), Margin = new Thickness(0, 0, 8, 0) };
         if (primary) { button.Background = Accent; button.Foreground = Brush("AccentText"); }
         if (button.Content is StackPanel row) foreach (var child in row.Children.OfType<TextBlock>()) child.Foreground = button.Foreground;
         if (button.Content is StackPanel icons) foreach (var child in icons.Children.OfType<Viewbox>()) ((System.Windows.Shapes.Path)child.Child).Stroke = button.Foreground;
