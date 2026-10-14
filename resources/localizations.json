@@ -2918,14 +2918,14 @@
     "storage.alert_unavailable": "Armazenamento %@ indisponível. Verifique conexão e permissões.",
     "storage.alert_critical": "%@ não comporta o próximo backup. Disponível %@; pico necessário ≈ %@.",
     "storage.alert_low": "%@ está próximo do limite. Disponível %@; próximo pico necessário ≈ %@.",
-    "ui.search_jobs": "Search jobs",
-    "ui.no_matches": "No matching jobs",
-    "ui.history_hint": "Backup results, logs and created copies.",
-    "ui.yes": "Yes",
-    "ui.no": "No",
-    "ui.pause": "Pause schedule",
-    "ui.resume": "Resume schedule",
-    "ui.general": "General"
+    "ui.search_jobs": "Pesquisar tarefas",
+    "ui.no_matches": "Nenhuma tarefa correspondente",
+    "ui.history_hint": "Resultados, registros e cópias criadas.",
+    "ui.yes": "Sim",
+    "ui.no": "Não",
+    "ui.pause": "Pausar agendamento",
+    "ui.resume": "Retomar agendamento",
+    "ui.general": "Geral"
   },
   "ru": {
     "ux.not_run": "Ещё не запускалось",

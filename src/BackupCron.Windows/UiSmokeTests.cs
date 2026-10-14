@@ -35,7 +35,10 @@ internal static class UiSmokeTests
         // Rendering the Window includes its solid background and the content margins.
         // Rendering only its child would discard the Window background and clip margins.
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(window);
-        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var stream = File.Create(Path.Combine(output, name)); encoder.Save(stream);
+        var content = (FrameworkElement)window.Content;
+        var client = new Int32Rect(0, 0, Math.Min(bitmap.PixelWidth, (int)Math.Ceiling(content.ActualWidth + content.Margin.Left + content.Margin.Right)), Math.Min(bitmap.PixelHeight, (int)Math.Ceiling(content.ActualHeight + content.Margin.Top + content.Margin.Bottom)));
+        var capture = new CroppedBitmap(bitmap, client);
+        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(capture)); using var stream = File.Create(Path.Combine(output, name)); encoder.Save(stream);
     }
     private static void Dialog(Window dialog, Func<Task> test)
     {
