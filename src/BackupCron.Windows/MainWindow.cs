@@ -57,6 +57,11 @@ internal sealed class MainWindow : Window
     }
     private Button Nav(string key, string icon, Action action, string id)
     { var b = Ui.Id(Ui.Button(key, action, icon: icon), id); b.HorizontalContentAlignment = HorizontalAlignment.Left; b.Background = Brushes.Transparent; b.Margin = new Thickness(0, 1, 0, 1); b.Padding = new Thickness(10, 8, 6, 8); return b; }
+    private static void NavState(Button button, bool selected)
+    {
+        button.Background = Ui.Brush(selected ? "Accent" : "Sidebar"); button.Foreground = Ui.Brush(selected ? "AccentText" : "Ink");
+        if (button.Content is StackPanel content) { foreach (var text in content.Children.OfType<TextBlock>()) text.Foreground = button.Foreground; foreach (var icon in content.Children.OfType<Viewbox>()) ((System.Windows.Shapes.Path)icon.Child).Stroke = button.Foreground; }
+    }
     internal void Navigate(string target, Guid? id = null)
     { page = target; selectedId = id; logVisible = false; renderStamp = ""; sidebarStamp = ""; Refresh(); scroll.ScrollToTop(); }
     public void Restore() { Show(); WindowState = WindowState.Normal; Activate(); _ = RefreshStorageAsync(); }
@@ -79,7 +84,7 @@ internal sealed class MainWindow : Window
         var side = System.Text.Json.JsonSerializer.Serialize(new { snapshot.Jobs, page, selectedId, search.Text }, Json.Options);
         if (side != sidebarStamp)
         {
-            sidebarStamp = side; sidebarJobs.Children.Clear(); overview.Background = Ui.Brush(page == "overview" ? "Selection" : "Sidebar"); history.Background = Ui.Brush(page == "history" ? "Selection" : "Sidebar");
+            sidebarStamp = side; sidebarJobs.Children.Clear(); NavState(overview, page == "overview"); NavState(history, page == "history");
             foreach (var job in snapshot.Jobs.Where(Matches))
             {
                 var b = Ui.Id(Ui.Button("ux.open_job", () => Navigate("job", job.Id)), "job-" + job.Id);

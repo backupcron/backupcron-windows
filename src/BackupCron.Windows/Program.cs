@@ -51,7 +51,7 @@ internal static class Program
                     if (!refused) throw new Exception("Native storage preflight did not reject an impossible space requirement.");
                     using (var feedback = new WindowsFeedback(() => { }, () => { })) feedback.NotifyStorage(new("fixture", StorageLevel.Warning, "BackupCron storage notification verification"), store.Snapshot().Settings);
                     if (store.Snapshot().History.Any(r => r.Status != RunStatus.Success)) throw new Exception("Windows backup smoke test failed: " + store.Snapshot().History.First(r => r.Status != RunStatus.Success).Message);
-                    
+
                     window.Show(); window.Refresh(); await window.RefreshStorageAsync();
                     if (store.Storage.Current.Volumes.Count == 0 || store.Storage.Current.Jobs.Count != (share == null ? 2 : 3) || store.Storage.Current.Jobs.Any(j => j.Estimate == null || !j.Reading.Known)) throw new Exception("Windows storage monitor smoke test failed.");
                     File.WriteAllText(Path.Combine(output, "storage-result.json"), System.Text.Json.JsonSerializer.Serialize(store.Storage.Current, Json.Options));

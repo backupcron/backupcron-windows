@@ -67,7 +67,10 @@ internal static class UiSmokeTests
         Dialog(databaseEditor, async () =>
         {
             databaseEditor.Tabs.SelectedIndex = 3; Click(databaseEditor, "editor-load-tables"); var grid = Find<DataGrid>(databaseEditor, "editor-table-grid"); await Until(() => grid.Items.Count == 2 && Find<Button>(databaseEditor, "editor-save").IsEnabled);
-            var choices = grid.Items.Cast<TableChoice>().ToArray(); Require(choices.Single(c => c.Name == "customers").Include && !choices.Single(c => c.Name == "logs").Include, "Database exclusions changed while loading sizes."); Require(choices.All(c => c.Bytes >= 0), "Table sizes are missing.");
+            var choices = grid.Items.Cast<TableChoice>().ToArray(); Require(choices.Single(c => c.Name == "customers").Include && !choices.Single(c => c.Name == "logs").Include, "Database exclusions changed while loading sizes."); var measured = await new BackupEngine().InspectDatabaseAsync(sqlite, store.Password(sqlite.Id));
+            Require(measured.SizeBytes > 0 && choices.All(c => c.Bytes == measured.Tables.Single(t => t.Id == c.Table.Id).SizeBytes), "Displayed table sizes differ from the database inspection.");
+            Require(choices.Where(c => c.Bytes == null).All(c => c.Size == "—"), "Unknown table sizes are presented as known.");
+            Require(Tree(databaseEditor).OfType<TextBlock>().Any(t => t.Text.Contains(L10n.Text("database.total_size")) && t.Text.Contains(L10n.Size(measured.SizeBytes))), "Total database size is missing from the editor.");
             Find<TextBox>(databaseEditor, "editor-table-search").Text = "customers"; Require(grid.Items.Count == 1, "Table search failed."); Find<TextBox>(databaseEditor, "editor-table-search").Text = "";
             await Render(databaseEditor, output, "database-tables.png"); Click(databaseEditor, "editor-save");
         });
