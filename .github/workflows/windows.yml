@@ -20,7 +20,7 @@ on:
         default: false
       version:
         description: Release version
-        default: '1.1.0'
+        default: '1.2.0'
         type: string
 permissions:
   contents: read
@@ -75,12 +75,12 @@ jobs:
       - name: Package self-contained installer
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version || '1.1.0' }}
+          RELEASE_VERSION: ${{ inputs.version || '1.2.0' }}
         run: ./scripts/build-windows.ps1 -Version $env:RELEASE_VERSION
       - name: Verify installation and installed application
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version || '1.1.0' }}
+          RELEASE_VERSION: ${{ inputs.version || '1.2.0' }}
         run: ./scripts/verify-installer.ps1 -Version $env:RELEASE_VERSION
       - uses: actions/upload-artifact@v7
         if: always()
@@ -92,6 +92,38 @@ jobs:
             artifacts/proof/*
             artifacts/install.log
           if-no-files-found: warn
+  gallery:
+    needs: [windows, database-integration]
+    if: github.event_name == 'workflow_dispatch' && !inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: BackupCron-Windows
+          path: artifacts
+      - name: Save real installed-app screenshots
+        shell: bash
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import shutil
+          target = Path('resources/screenshots')
+          target.mkdir(parents=True, exist_ok=True)
+          names = ['job-details.png', 'editor-source.png', 'editor-destination.png', 'editor-schedule.png', 'database-tables.png', 'history.png', 'compact-overview.png', 'settings-general.png', 'settings-storage.png']
+          shutil.copyfile('artifacts/proof/BackupCron-Windows-preview.png', target / 'overview.png')
+          for name in names:
+              shutil.copyfile(Path('artifacts/proof') / name, target / name)
+          PYCODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add resources/screenshots
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add actual Windows 1.2 interface screenshots [skip ci]'
+            git push origin HEAD:main
+          fi
   release:
     needs: [windows, database-integration]
     if: github.event_name == 'workflow_dispatch' && inputs.publish
@@ -110,8 +142,8 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
-          printf '%s\n' 'Free, open-source BackupCron for Windows.' '' 'Download the win-x64 setup.exe and run the installer. The .NET runtime is included; installation does not require administrator rights.' '' 'New in 1.1: machine and destination capacity, available account quota, next-backup output and peak working space, configurable early warnings and serialized backups on shared volumes.' '' 'Files, folders, projects, ZIP, SQLite/PostgreSQL/MySQL, table sizes and exclusions, Docker/SSH, schedules, retention, history, protected passwords and ten interface languages.' '' 'Scheduling works while BackupCron is running, including in the notification area. The installer is currently unsigned by a publisher certificate.' '' 'CI verified backup scenarios on Windows, real PostgreSQL/MySQL dump restoration, installation, WPF startup, protected credentials, native local/SMB storage queries, next-backup budgets, upgrade from 1.0 and uninstallation.' > release-notes.md
+          printf '%s\n' 'Free, open-source BackupCron for Windows.' '' 'Download the win-x64 setup.exe and run the installer. The .NET runtime is included; installation does not require administrator rights.' '' 'New in 1.2: a macOS-style sidebar, overview, job details and status cards, blue actions, streamlined editors, history and settings. Storage capacity, next-backup budgets and warnings remain included.' '' 'Files, folders, projects, ZIP, SQLite/PostgreSQL/MySQL, table sizes and exclusions, Docker/SSH, schedules, retention, history, protected passwords and ten interface languages.' '' 'Scheduling works while BackupCron is running, including in the notification area. The installer is currently unsigned by a publisher certificate.' '' 'CI verified backup scenarios on Windows, real PostgreSQL/MySQL dump restoration, installation, WPF startup, protected credentials, native local/SMB storage queries, next-backup budgets, upgrade from 1.1 and uninstallation. Also verified navigation, search, pause/resume, run/log actions, editor and settings persistence, SQLite table size/search/exclusion controls, keyboard focus and compact-window layout.' > release-notes.md
           printf '\nBuilt from `%s`.\n\nSHA-256:\n```text\n' "$SOURCE_COMMIT" >> release-notes.md
           cat artifacts/SHA256SUMS.txt >> release-notes.md
           printf '\n```\n' >> release-notes.md
-          gh release create "v$RELEASE_VERSION" --repo "$GH_REPO" --target "$SOURCE_COMMIT" --title "BackupCron Windows $RELEASE_VERSION" --notes-file release-notes.md artifacts/*setup.exe artifacts/SHA256SUMS.txt artifacts/proof/BackupCron-Windows-preview.png
+          gh release create "v$RELEASE_VERSION" --repo "$GH_REPO" --target "$SOURCE_COMMIT" --title "BackupCron Windows $RELEASE_VERSION" --notes-file release-notes.md artifacts/*setup.exe artifacts/SHA256SUMS.txt artifacts/proof/*.png artifacts/proof/ui-result.txt
