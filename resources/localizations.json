@@ -355,7 +355,15 @@
     "storage.serial_note": "Sicherungen auf demselben Volumen laufen nacheinander.",
     "storage.alert_unavailable": "Speicher %@ nicht verfügbar. Verbindung und Rechte prüfen.",
     "storage.alert_critical": "Speicher %@ reicht für die nächste Sicherung nicht. Verfügbar %@; Spitzenbedarf ≈ %@.",
-    "storage.alert_low": "Speicher %@ erreicht den Warngrenzwert. Verfügbar %@; nächster Spitzenbedarf ≈ %@."
+    "storage.alert_low": "Speicher %@ erreicht den Warngrenzwert. Verfügbar %@; nächster Spitzenbedarf ≈ %@.",
+    "ui.search_jobs": "Aufträge suchen",
+    "ui.no_matches": "Keine passenden Aufträge",
+    "ui.history_hint": "Sicherungsergebnisse, Protokolle und erstellte Kopien.",
+    "ui.yes": "Ja",
+    "ui.no": "Nein",
+    "ui.pause": "Zeitplan pausieren",
+    "ui.resume": "Zeitplan fortsetzen",
+    "ui.general": "Allgemein"
   },
   "zh-Hans": {
     "ux.not_run": "尚未运行",
@@ -713,7 +721,15 @@
     "storage.serial_note": "同一存储卷上的备份依次执行。",
     "storage.alert_unavailable": "存储 %@ 不可用。请检查连接和权限。",
     "storage.alert_critical": "%@ 无法容纳下次备份。可用 %@，峰值需求 ≈ %@。",
-    "storage.alert_low": "%@ 接近警告阈值。可用 %@，下次峰值需求 ≈ %@。"
+    "storage.alert_low": "%@ 接近警告阈值。可用 %@，下次峰值需求 ≈ %@。",
+    "ui.search_jobs": "搜索任务",
+    "ui.no_matches": "没有匹配的任务",
+    "ui.history_hint": "备份结果、日志和已创建的副本。",
+    "ui.yes": "是",
+    "ui.no": "否",
+    "ui.pause": "暂停计划",
+    "ui.resume": "恢复计划",
+    "ui.general": "常规"
   },
   "ja": {
     "ux.not_run": "未実行",
@@ -1071,7 +1087,15 @@
     "storage.serial_note": "同じボリュームのバックアップは順番に実行します。",
     "storage.alert_unavailable": "%@ を利用できません。接続と権限を確認してください。",
     "storage.alert_critical": "%@ は次回バックアップに容量不足です。利用可能 %@、最大必要量 ≈ %@。",
-    "storage.alert_low": "%@ が警告しきい値に近づいています。利用可能 %@、次回最大必要量 ≈ %@。"
+    "storage.alert_low": "%@ が警告しきい値に近づいています。利用可能 %@、次回最大必要量 ≈ %@。",
+    "ui.search_jobs": "ジョブを検索",
+    "ui.no_matches": "一致するジョブはありません",
+    "ui.history_hint": "バックアップ結果、ログ、作成されたコピー。",
+    "ui.yes": "はい",
+    "ui.no": "いいえ",
+    "ui.pause": "スケジュールを一時停止",
+    "ui.resume": "スケジュールを再開",
+    "ui.general": "一般"
   },
   "en": {
     "ux.not_run": "Not run yet",
@@ -1429,7 +1453,15 @@
     "storage.serial_note": "Backups on the same volume run one at a time.",
     "storage.alert_unavailable": "Storage unavailable: %@. Check the connection or permissions.",
     "storage.alert_critical": "Storage %@ cannot fit the next backup. Available %@; peak need ≈ %@.",
-    "storage.alert_low": "Storage %@ is near its warning threshold. Available %@; next peak need ≈ %@."
+    "storage.alert_low": "Storage %@ is near its warning threshold. Available %@; next peak need ≈ %@.",
+    "ui.search_jobs": "Search jobs",
+    "ui.no_matches": "No matching jobs",
+    "ui.history_hint": "Backup results, logs and created copies.",
+    "ui.yes": "Yes",
+    "ui.no": "No",
+    "ui.pause": "Pause schedule",
+    "ui.resume": "Resume schedule",
+    "ui.general": "General"
   },
   "es": {
     "ux.not_run": "Aún no se ha ejecutado",
@@ -1787,7 +1819,15 @@
     "storage.serial_note": "Las copias del mismo volumen se ejecutan una a una.",
     "storage.alert_unavailable": "Almacenamiento %@ no disponible. Compruebe conexión y permisos.",
     "storage.alert_critical": "En %@ no cabe la próxima copia. Disponible %@; máximo necesario ≈ %@.",
-    "storage.alert_low": "%@ está cerca del umbral. Disponible %@; próximo máximo necesario ≈ %@."
+    "storage.alert_low": "%@ está cerca del umbral. Disponible %@; próximo máximo necesario ≈ %@.",
+    "ui.search_jobs": "Buscar tareas",
+    "ui.no_matches": "No hay tareas coincidentes",
+    "ui.history_hint": "Resultados, registros y copias creadas.",
+    "ui.yes": "Sí",
+    "ui.no": "No",
+    "ui.pause": "Pausar horario",
+    "ui.resume": "Reanudar horario",
+    "ui.general": "General"
   },
   "it": {
     "ux.not_run": "Non ancora eseguito",
@@ -2145,7 +2185,15 @@
     "storage.serial_note": "I backup sullo stesso volume vengono eseguiti in sequenza.",
     "storage.alert_unavailable": "Archiviazione %@ non disponibile. Verifica connessione e permessi.",
     "storage.alert_critical": "%@ non può contenere il prossimo backup. Disponibile %@; picco necessario ≈ %@.",
-    "storage.alert_low": "%@ è vicino alla soglia. Disponibile %@; prossimo picco necessario ≈ %@."
+    "storage.alert_low": "%@ è vicino alla soglia. Disponibile %@; prossimo picco necessario ≈ %@.",
+    "ui.search_jobs": "Cerca attività",
+    "ui.no_matches": "Nessuna attività corrispondente",
+    "ui.history_hint": "Risultati, registri e copie create.",
+    "ui.yes": "Sì",
+    "ui.no": "No",
+    "ui.pause": "Sospendi pianificazione",
+    "ui.resume": "Riprendi pianificazione",
+    "ui.general": "Generali"
   },
   "ko": {
     "ux.not_run": "아직 실행하지 않음",
@@ -2503,7 +2551,15 @@
     "storage.serial_note": "같은 볼륨의 백업은 순서대로 실행됩니다.",
     "storage.alert_unavailable": "%@ 저장소를 사용할 수 없습니다. 연결과 권한을 확인하세요.",
     "storage.alert_critical": "%@에 다음 백업을 위한 공간이 부족합니다. 사용 가능 %@, 최대 필요량 ≈ %@.",
-    "storage.alert_low": "%@가 경고 기준에 가까워졌습니다. 사용 가능 %@, 다음 최대 필요량 ≈ %@."
+    "storage.alert_low": "%@가 경고 기준에 가까워졌습니다. 사용 가능 %@, 다음 최대 필요량 ≈ %@.",
+    "ui.search_jobs": "작업 검색",
+    "ui.no_matches": "일치하는 작업 없음",
+    "ui.history_hint": "백업 결과, 로그 및 생성된 복사본.",
+    "ui.yes": "예",
+    "ui.no": "아니요",
+    "ui.pause": "일정 일시 중지",
+    "ui.resume": "일정 재개",
+    "ui.general": "일반"
   },
   "pt-BR": {
     "ux.not_run": "Ainda não executado",
@@ -2861,7 +2917,15 @@
     "storage.serial_note": "Backups no mesmo volume são executados um de cada vez.",
     "storage.alert_unavailable": "Armazenamento %@ indisponível. Verifique conexão e permissões.",
     "storage.alert_critical": "%@ não comporta o próximo backup. Disponível %@; pico necessário ≈ %@.",
-    "storage.alert_low": "%@ está próximo do limite. Disponível %@; próximo pico necessário ≈ %@."
+    "storage.alert_low": "%@ está próximo do limite. Disponível %@; próximo pico necessário ≈ %@.",
+    "ui.search_jobs": "Search jobs",
+    "ui.no_matches": "No matching jobs",
+    "ui.history_hint": "Backup results, logs and created copies.",
+    "ui.yes": "Yes",
+    "ui.no": "No",
+    "ui.pause": "Pause schedule",
+    "ui.resume": "Resume schedule",
+    "ui.general": "General"
   },
   "ru": {
     "ux.not_run": "Ещё не запускалось",
@@ -3219,7 +3283,15 @@
     "storage.serial_note": "Бэкапы на одном томе выполняются по очереди.",
     "storage.alert_unavailable": "Хранилище %@ недоступно. Проверьте подключение или права.",
     "storage.alert_critical": "В %@ не хватит места на следующий бэкап. Доступно %@; на создание ≈ %@.",
-    "storage.alert_low": "В %@ достигнут порог предупреждения. Доступно %@; на создание следующей копии ≈ %@."
+    "storage.alert_low": "В %@ достигнут порог предупреждения. Доступно %@; на создание следующей копии ≈ %@.",
+    "ui.search_jobs": "Поиск заданий",
+    "ui.no_matches": "Нет подходящих заданий",
+    "ui.history_hint": "Результаты бекапов, журналы и созданные копии.",
+    "ui.yes": "Да",
+    "ui.no": "Нет",
+    "ui.pause": "Приостановить расписание",
+    "ui.resume": "Возобновить расписание",
+    "ui.general": "Основные"
   },
   "fr": {
     "ux.not_run": "Pas encore exécuté",
@@ -3577,6 +3649,14 @@
     "storage.serial_note": "Les sauvegardes du même volume se font successivement.",
     "storage.alert_unavailable": "Stockage %@ indisponible. Vérifiez la connexion et les droits.",
     "storage.alert_critical": "%@ ne peut pas contenir la prochaine sauvegarde. Disponible %@ ; besoin maximal ≈ %@.",
-    "storage.alert_low": "%@ approche du seuil. Disponible %@ ; prochain besoin maximal ≈ %@."
+    "storage.alert_low": "%@ approche du seuil. Disponible %@ ; prochain besoin maximal ≈ %@.",
+    "ui.search_jobs": "Rechercher des tâches",
+    "ui.no_matches": "Aucune tâche correspondante",
+    "ui.history_hint": "Résultats, journaux et copies créées.",
+    "ui.yes": "Oui",
+    "ui.no": "Non",
+    "ui.pause": "Suspendre la planification",
+    "ui.resume": "Reprendre la planification",
+    "ui.general": "Général"
   }
 }

@@ -15,7 +15,7 @@ internal static class Program
         var smoke = args.Contains("--smoke-test");
         using var mutex = new Mutex(true, smoke ? "BackupCron-smoke-" + Guid.NewGuid() : @"Local\BackupCron.Windows", out var first);
         if (!first) { MessageBox.Show("BackupCron is already running. Open it from the notification area.", "BackupCron"); return 0; }
-        var app = new Application(); RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        var app = new Application(); Ui.Install(app); RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         var directory = smoke ? Path.Combine(Path.GetTempPath(), "BackupCron-Windows-smoke-" + Guid.NewGuid()) : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BackupCron");
         var store = new BackupStore(directory, new WindowsSecretStore(Path.Combine(directory, "secrets")), new WindowsStorageProbe()); var exit = 0;
         var window = new MainWindow(store, smoke); app.MainWindow = window;
@@ -51,14 +51,12 @@ internal static class Program
                     if (!refused) throw new Exception("Native storage preflight did not reject an impossible space requirement.");
                     using (var feedback = new WindowsFeedback(() => { }, () => { })) feedback.NotifyStorage(new("fixture", StorageLevel.Warning, "BackupCron storage notification verification"), store.Snapshot().Settings);
                     if (store.Snapshot().History.Any(r => r.Status != RunStatus.Success)) throw new Exception("Windows backup smoke test failed: " + store.Snapshot().History.First(r => r.Status != RunStatus.Success).Message);
-                    _ = new JobEditorWindow(store, sqlite); _ = new SettingsWindow(store);
+                    
                     window.Show(); window.Refresh(); await window.RefreshStorageAsync();
                     if (store.Storage.Current.Volumes.Count == 0 || store.Storage.Current.Jobs.Count != (share == null ? 2 : 3) || store.Storage.Current.Jobs.Any(j => j.Estimate == null || !j.Reading.Known)) throw new Exception("Windows storage monitor smoke test failed.");
                     File.WriteAllText(Path.Combine(output, "storage-result.json"), System.Text.Json.JsonSerializer.Serialize(store.Storage.Current, Json.Options));
-                    await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); window.UpdateLayout();
-                    var image = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32); image.Render(window);
-                    var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using (var stream = File.Create(Path.Combine(output, "BackupCron-Windows-preview.png"))) encoder.Save(stream);
-                    File.WriteAllText(Path.Combine(output, "smoke-result.txt"), "PASS: WPF startup, editor, settings, DPAPI credentials, file ZIP, SQLite exclusions, native storage capacity, UNC backup, tray notification and next-backup budgets.\n");
+                    await UiSmokeTests.RunAsync(store, window, file, sqlite, output);
+                    File.WriteAllText(Path.Combine(output, "smoke-result.txt"), "PASS: WPF navigation, search, job actions, editor save, database table selection, history filters, settings persistence, keyboard focus, compact layout, real window renders, DPAPI credentials, file ZIP, SQLite exclusions, native storage capacity, UNC backup, tray notification and next-backup budgets.\n");
                 }
                 catch (Exception ex) { exit = 1; Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "smoke-result.txt"), ex.ToString()); }
                 finally { app.Shutdown(exit); }

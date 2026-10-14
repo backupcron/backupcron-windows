@@ -32,3 +32,14 @@ object as well; the app never edits the source to work around such errors.
 Uninstallation preserves job settings, encrypted credentials and backup files.
 DPAPI credentials are tied to the Windows user/profile and are not a portable
 export format.
+
+## Windows 1.2 interface
+
+The Windows layout now follows macOS: sidebar navigation with job selection,
+status rows in the overview, dedicated job detail pages, recent runs, live logs,
+blue primary actions and consistent source/destination/schedule editors.
+Storage monitoring remains available in the overview, job details and editor.
+Windows keeps its native window chrome, Explorer integration, pickers and DPAPI.
+Installed-app CI exercises navigation, search, run and pause actions, editing and
+settings persistence, SQLite table sizes/search/exclusions and keyboard focus,
+then renders the actual windows at regular and compact sizes.

@@ -1,4 +1,4 @@
-param([string]$Version = '1.1.0')
+param([string]$Version = '1.2.0')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $artifacts = Join-Path $repo 'artifacts'
@@ -8,8 +8,8 @@ $proof = Join-Path $artifacts 'proof'
 New-Item -ItemType Directory -Force $proof | Out-Null
 # Validate a real upgrade with legacy user data on the disposable CI runner.
 $previous = Join-Path $env:RUNNER_TEMP 'BackupCron-previous-setup.exe'
-Invoke-WebRequest 'https://github.com/backupcron/backupcron-windows/releases/download/v1.0.0/BackupCron-1.0.0-win-x64-setup.exe' -OutFile $previous
-if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'e470bc986c2b4ca2c093c905a4362dae044d1aac2b947b928f2dbd3b741393d8') { throw 'Previous installer checksum mismatch.' }
+Invoke-WebRequest 'https://github.com/backupcron/backupcron-windows/releases/download/v1.1.0/BackupCron-1.1.0-win-x64-setup.exe' -OutFile $previous
+if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6f82f3ee90129bea2a5e4bc6bbe67e35f749902474aa5042e99db59afdc1ac42') { throw 'Previous installer checksum mismatch.' }
 $process = Start-Process $previous -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$install") -Wait -PassThru
 if ($process.ExitCode -ne 0) { throw 'Previous installer failed.' }
 $profile = Join-Path $env:LOCALAPPDATA 'BackupCron'
@@ -33,9 +33,10 @@ try {
     $network = "\\localhost\$shareName"
     if (-not (Test-Path $network)) { throw 'Prepared SMB fixture is not accessible.' }
     $process = Start-Process $app -ArgumentList @('--smoke-test', $proof, '--storage-share', $network) -PassThru
-    if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Installed app smoke test timed out.' }
+    if (-not $process.WaitForExit(150000)) { $process.Kill(); throw 'Installed app smoke test timed out.' }
     if ($process.ExitCode -ne 0) { Get-Content (Join-Path $proof 'smoke-result.txt'); throw 'Installed app smoke test failed.' }
     Get-Content (Join-Path $proof 'smoke-result.txt')
+    Get-Content (Join-Path $proof 'ui-result.txt')
 } finally {
     Remove-SmbShare -Name $shareName -Force -Confirm:$false
 }
@@ -43,4 +44,4 @@ $uninstaller = Join-Path $install 'unins000.exe'
 $process = Start-Process $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
 if ($process.ExitCode -ne 0 -or (Test-Path $app)) { throw 'Uninstall verification failed.' }
 if ((Get-FileHash $legacy -Algorithm SHA256).Hash -ne $legacyHash) { throw 'Uninstall changed user data.' }
-Write-Output 'PASS: upgrade from 1.0, preserved user settings, launch, DPAPI, file/SQLite/UNC backups, UI render, native storage capacity, tray warnings, next-backup budgets and uninstall.'
+Write-Output 'PASS: upgrade from 1.1, preserved user settings, launch, DPAPI, file/SQLite/UNC backups, UI render, native storage capacity, tray warnings, next-backup budgets and uninstall.'

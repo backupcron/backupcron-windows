@@ -5,15 +5,32 @@ folders, projects and databases. No purchases, subscriptions or job limits.
 
 ## Download
 
-[Download the Windows installer](https://github.com/backupcron/backupcron-windows/releases/download/v1.1.0/BackupCron-1.1.0-win-x64-setup.exe)
+[Download the Windows installer](https://github.com/backupcron/backupcron-windows/releases/download/v1.2.0/BackupCron-1.2.0-win-x64-setup.exe)
 
 Windows 10 version 2004 or later, or Windows 11; 64-bit Intel/AMD.
 The installer includes the .NET runtime and installs for the current user
 without administrator privileges. The installer is currently unsigned by a
 publisher certificate. Verify its SHA-256 against the release page.
 
+## Interface
+
+The layout follows the macOS application: a light sidebar, blue primary actions,
+readable backup status rows and a dedicated page for each job. Windows window
+controls, file pickers, keyboard navigation and high-contrast colors remain native.
+
+![Backup overview](resources/screenshots/overview.png)
+
+| Job details | Backup editor |
+| --- | --- |
+| ![Job details](resources/screenshots/job-details.png) | ![Source](resources/screenshots/editor-source.png) |
+| ![Destination and space](resources/screenshots/editor-destination.png) | ![Database table sizes and exclusions](resources/screenshots/database-tables.png) |
+
+Screenshots are rendered from the installed Windows application with isolated
+example files and a SQLite database.
+
 ## Features
 
+- macOS-style sidebar, backup status overview, job pages, editors, history and settings.
 - Individual files, folders and projects: ordinary copies or ZIP archives.
 - Project exclusions, including an explicit switch for Git metadata.
 - SQLite consistent snapshots, including committed WAL data.
@@ -85,7 +102,7 @@ dotnet run --project tests/BackupCron.Tests -c Release
 
 The installer is written to `artifacts/`. GitHub Actions also verifies a real
 installation, starts the installed app with isolated fixtures, checks DPAPI
-and file/SQLite/SMB backups, native capacity queries and an upgrade from 1.0, renders the WPF window, and tests uninstallation.
+and file/SQLite/SMB backups, native capacity queries and an upgrade from 1.1, exercises navigation and editing, renders the actual WPF windows, and tests uninstallation.
 An additional job restores actual PostgreSQL and MySQL dumps into disposable
 databases. Release publication requires both jobs to pass.
 
