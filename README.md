@@ -5,7 +5,7 @@ folders, projects and databases. No purchases, subscriptions or job limits.
 
 ## Download
 
-[Download the Windows installer](https://github.com/backupcron/backupcron-windows/releases/download/v1.2.0/BackupCron-1.2.0-win-x64-setup.exe)
+[Download the Windows installer](https://github.com/backupcron/backupcron-windows/releases/download/v1.3.0/BackupCron-1.3.0-win-x64-setup.exe)
 
 Windows 10 version 2004 or later, or Windows 11; 64-bit Intel/AMD.
 The installer includes the .NET runtime and installs for the current user
@@ -48,6 +48,7 @@ example files and a SQLite database.
 - Progress, live logs, history, cancellation and verified output publication.
 - Passwords encrypted with Windows DPAPI for the current user.
 - Launch at login, notification-area operation, notifications and optional sounds.
+- Automatic settings and job backups to a selected folder, with manual backup and restore.
 - Ten interface languages, selected automatically or in settings.
 
 Scheduling works while BackupCron is running. Closing its window keeps it in
@@ -64,6 +65,17 @@ the remote server. BackupCron does not bypass SSH host verification.
 Windows may require Developer Mode or suitable privileges to recreate symbolic
 links in ordinary folder copies. ZIP entries retain links without following
 them; use an extraction tool that understands symbolic-link entries.
+
+## Settings backup and restore
+
+In Settings, choose a backup folder and enable automatic settings backup,
+or use **Back up now**. Each copy is a separate JSON file. Use **Restore
+settings** to select a copy. The previous settings are saved under
+`%LOCALAPPDATA%/BackupCron/Settings recovery` before replacement.
+
+Copies contain jobs and app preferences. Passwords, run history and system
+startup registration are not transferred. Restoration keeps this PC’s backup
+folder and pauses the scheduler; check paths and passwords before enabling it.
 
 ## Storage monitoring
 

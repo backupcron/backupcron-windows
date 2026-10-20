@@ -181,6 +181,7 @@ internal static class Program
                 Assert(L10n.AvailableLanguages.Count == 10); foreach (var lang in L10n.AvailableLanguages) { L10n.Language = lang; Assert(L10n.Text("common.new_job") != "common.new_job"); Assert(L10n.Text("database.required_table", "a", "b").Contains('a')); } L10n.Language = "en"; return Task.CompletedTask;
             });
             await StorageTests.Run(Check);
+            await SettingsBackupTests.Run(Check);
             if (args.Contains("--server-tests")) await ServerTests.Run(Check, root);
         }
         finally { Directory.Delete(root, true); }

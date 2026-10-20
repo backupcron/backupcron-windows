@@ -1,4 +1,4 @@
-param([ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '1.2.0')
+param([ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '1.3.0')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $artifacts = Join-Path $repo 'artifacts'

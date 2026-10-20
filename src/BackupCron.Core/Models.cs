@@ -119,6 +119,8 @@ public sealed record BackupResult(string OutputPath, long SizeBytes, string Mess
 public sealed record BackupProgress(double Fraction, string Message);
 public sealed class AppSettings
 {
+    public bool SettingsBackupEnabled { get; set; }
+    public string SettingsBackupDirectory { get; set; } = "";
     public bool SchedulerEnabled { get; set; } = true;
     public bool StorageWarningsEnabled { get; set; } = true;
     public double StorageWarningGiB { get; set; } = 20;

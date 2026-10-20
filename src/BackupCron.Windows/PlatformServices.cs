@@ -26,8 +26,10 @@ internal static class WindowsStartup
     public static bool Enabled { get { using var key = Registry.CurrentUser.OpenSubKey(Key); return key?.GetValue("BackupCron") is string; } }
     public static void Set(bool enabled)
     {
+        if (!enabled) { using var existing = Registry.CurrentUser.OpenSubKey(Key, writable: true); existing?.DeleteValue("BackupCron", false); return; }
+        var executable = Environment.ProcessPath ?? throw new InvalidOperationException(L10n.Text("settings.launch_change_failed", "BackupCron.exe"));
         using var key = Registry.CurrentUser.CreateSubKey(Key);
-        if (enabled) key.SetValue("BackupCron", "\"" + Environment.ProcessPath + "\" --minimized"); else key.DeleteValue("BackupCron", false);
+        key.SetValue("BackupCron", "\"" + executable + "\" --minimized");
     }
 }
 internal sealed class WindowsFeedback : IDisposable

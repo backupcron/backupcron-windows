@@ -33,8 +33,10 @@ public sealed class BackupStore
     private readonly ISecretStore secrets;
     private readonly BackupEngine engine;
     public StorageMonitor Storage { get; }
+    public SettingsBackupQueue SettingsBackups { get; } = new();
     public ConcurrentDictionary<Guid, RunningBackup> Running { get; } = new();
-    public string? Error { get; private set; }
+    private string? stateError;
+    public string? Error { get => stateError ?? SettingsBackups.Error; private set => stateError = value; }
     public bool ReadOnly { get; }
     public event Action<BackupRun>? Finished;
     public BackupStore(string directory, ISecretStore secrets, IStorageProbe? storageProbe = null)
@@ -52,10 +54,36 @@ public sealed class BackupStore
         }
         else state = new();
         L10n.Language = state.Settings.Language;
+        if (!ReadOnly) SettingsBackups.Schedule(SettingsArchive.Create(state.Jobs, state.Settings));
     }
     public PersistedState Snapshot()
     { lock (sync) return new() { Jobs = state.Jobs.Select(j => j.Clone()).ToList(), History = state.History.ToList(), Settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(state.Settings, Json.Options), Json.Options)! }; }
     public string Password(Guid id) => secrets.Get(id);
+    public Task<string> BackupSettingsAsync(string directory, AppSettings? settings = null)
+    {
+        SettingsArchive archive;
+        lock (sync) { EnsureWritable(); archive = SettingsArchive.Create(state.Jobs, settings ?? state.Settings); }
+        return Task.Run(() => archive.Write(directory));
+    }
+
+    public void RestoreSettings(SettingsArchive archive)
+    {
+        archive.Validate();
+        lock (sync)
+        {
+            EnsureWritable();
+            if (!Running.IsEmpty) throw new InvalidOperationException(L10n.Text("settings_backup.running"));
+            var restored = SettingsArchive.Create(archive.Jobs, archive.Settings);
+            restored.Settings.SettingsBackupEnabled = state.Settings.SettingsBackupEnabled;
+            restored.Settings.SettingsBackupDirectory = state.Settings.SettingsBackupDirectory;
+            restored.Settings.SchedulerEnabled = false;
+            var recovery = Path.Combine(Path.GetDirectoryName(path)!, "Settings recovery");
+            Directory.CreateDirectory(recovery);
+            SettingsArchive.Create(state.Jobs, state.Settings).Write(recovery);
+            Persist(restored.Jobs, state.History, restored.Settings);
+            state.Jobs = restored.Jobs; state.Settings = restored.Settings; L10n.Language = state.Settings.Language;
+        }
+    }
     public void Save(BackupJob job, string? password = null)
     {
         lock (sync)
@@ -70,7 +98,7 @@ public sealed class BackupStore
         }
     }
     public void SaveSettings(AppSettings settings)
-    { lock (sync) { EnsureWritable(); ValidateStorageSettings(settings); settings.SoundVolume = double.IsFinite(settings.SoundVolume) ? Math.Clamp(settings.SoundVolume, 0, 1) : .35; Persist(state.Jobs, state.History, settings); state.Settings = settings; L10n.Language = settings.Language; } }
+    { lock (sync) { EnsureWritable(); ValidateStorageSettings(settings); if (settings.SettingsBackupEnabled && (string.IsNullOrWhiteSpace(settings.SettingsBackupDirectory) || !Path.IsPathFullyQualified(settings.SettingsBackupDirectory))) throw new ArgumentException(L10n.Text("settings_backup.choose_folder")); settings.SoundVolume = double.IsFinite(settings.SoundVolume) ? Math.Clamp(settings.SoundVolume, 0, 1) : .35; Persist(state.Jobs, state.History, settings); state.Settings = settings; L10n.Language = settings.Language; } }
     public void Delete(Guid id)
     {
         lock (sync)
@@ -151,6 +179,7 @@ public sealed class BackupStore
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
             { JsonSerializer.Serialize(file, new PersistedState { Jobs = jobs, History = history, Settings = settings }, Json.Options); file.Flush(true); }
             File.Move(temporary, path, overwrite: true);
+            SettingsBackups.Schedule(SettingsArchive.Create(jobs, settings));
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
